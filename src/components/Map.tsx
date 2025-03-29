@@ -24,15 +24,16 @@ const MapView = ({ locations }: MapViewProps) => {
   const [googleApiKey, setGoogleApiKey] = useState<string>('');
   const [keyInput, setKeyInput] = useState<string>('');
   const mapRef = useRef<google.maps.Map | null>(null);
-
+  
+  // Load the API key only once on component mount
   useEffect(() => {
-    // Check if API key is already in localStorage
     const savedKey = localStorage.getItem('google_maps_key');
     if (savedKey) {
       setGoogleApiKey(savedKey);
     }
   }, []);
 
+  // Only initialize the loader when we have a valid API key
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleApiKey || ' ', // Empty space as placeholder when no key is set
     id: 'google-map-script'
@@ -50,8 +51,10 @@ const MapView = ({ locations }: MapViewProps) => {
     
     // Save key to localStorage
     localStorage.setItem('google_maps_key', keyInput);
-    setGoogleApiKey(keyInput);
-    toast.success('Google Maps API key saved successfully!');
+    
+    // Force a full page reload to reinitialize the Google Maps loader
+    // This avoids the error with changing loader options
+    window.location.reload();
   };
 
   const handleFocusUBC = () => {
@@ -106,7 +109,8 @@ const MapView = ({ locations }: MapViewProps) => {
         <button
           onClick={() => {
             localStorage.removeItem('google_maps_key');
-            setGoogleApiKey('');
+            // Force a page reload to clear any cached Google Maps loader state
+            window.location.reload();
           }}
           className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
         >
@@ -116,30 +120,33 @@ const MapView = ({ locations }: MapViewProps) => {
     );
   }
 
+  // Show loading state while map is loading
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded-lg">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-quiet-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="map-container relative">
-      {!isLoaded ? (
-        <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded-lg">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-quiet-500"></div>
-        </div>
-      ) : (
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={UBC_CENTER}
-          zoom={15}
-          onLoad={onMapLoad}
-          options={{
-            mapTypeControl: true,
-            streetViewControl: true,
-            fullscreenControl: true,
-            zoomControl: true,
-          }}
-        >
-          {locations.map(location => (
-            <LocationMarker key={location._id} location={location} />
-          ))}
-        </GoogleMap>
-      )}
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={UBC_CENTER}
+        zoom={15}
+        onLoad={onMapLoad}
+        options={{
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true,
+          zoomControl: true,
+        }}
+      >
+        {locations.map(location => (
+          <LocationMarker key={location._id} location={location} />
+        ))}
+      </GoogleMap>
       
       <button
         onClick={handleFocusUBC}
