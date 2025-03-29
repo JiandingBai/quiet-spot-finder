@@ -1,6 +1,7 @@
 
+import { useState } from "react";
+import { Marker, InfoWindow } from "@react-google-maps/api";
 import { Location } from "@/types";
-import { Marker, Popup } from "react-map-gl";
 import { useNavigate } from "react-router-dom";
 import QuietnessMeter from "./QuietnessMeter";
 import { Button } from "./ui/button";
@@ -10,6 +11,7 @@ interface LocationMarkerProps {
 }
 
 const LocationMarker = ({ location }: LocationMarkerProps) => {
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   
   // Get color based on quietness level
@@ -24,52 +26,50 @@ const LocationMarker = ({ location }: LocationMarkerProps) => {
       default: return "#9b87f5";
     }
   };
+
+  const markerPosition = {
+    lat: location.location.coordinates[1],
+    lng: location.location.coordinates[0]
+  };
   
   return (
-    <Marker
-      longitude={location.location.coordinates[0]}
-      latitude={location.location.coordinates[1]}
-      anchor="bottom"
-    >
-      <div className="relative group">
-        <div
-          className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transform transition-transform group-hover:scale-110"
-          style={{ backgroundColor: getMarkerColor() }}
-        >
-          <div className="w-3 h-3 bg-white rounded-full" />
-        </div>
-        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 translate-y-full opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-          <div className="bg-white p-2 rounded-lg shadow-lg whitespace-nowrap text-xs font-medium">
-            {location.name}
-          </div>
-        </div>
-      </div>
+    <>
+      <Marker
+        position={markerPosition}
+        onClick={() => setIsOpen(true)}
+        icon={{
+          path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",
+          fillColor: getMarkerColor(),
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+          scale: 1.5,
+          anchor: new google.maps.Point(12, 22),
+        }}
+      />
       
-      <Popup
-        longitude={location.location.coordinates[0]}
-        latitude={location.location.coordinates[1]}
-        anchor="bottom"
-        offset={[0, -30]}
-        closeButton={false}
-        closeOnClick={false}
-        maxWidth="300px"
-      >
-        <div className="p-2">
-          <h3 className="font-bold">{location.name}</h3>
-          <div className="my-2">
-            <QuietnessMeter level={location.averageQuietness} size="sm" />
+      {isOpen && (
+        <InfoWindow
+          position={markerPosition}
+          onCloseClick={() => setIsOpen(false)}
+        >
+          <div className="p-2 min-w-[200px]">
+            <h3 className="font-bold">{location.name}</h3>
+            <div className="my-2">
+              <QuietnessMeter level={location.averageQuietness} size="sm" />
+            </div>
+            <p className="text-xs text-gray-500 mb-2 line-clamp-2">{location.description}</p>
+            <Button 
+              size="sm" 
+              className="w-full bg-quiet-400 hover:bg-quiet-500 text-xs"
+              onClick={() => navigate(`/location/${location._id}`)}
+            >
+              View Details
+            </Button>
           </div>
-          <p className="text-xs text-gray-500 mb-2 line-clamp-2">{location.description}</p>
-          <Button 
-            size="sm" 
-            className="w-full bg-quiet-400 hover:bg-quiet-500 text-xs"
-            onClick={() => navigate(`/location/${location._id}`)}
-          >
-            View Details
-          </Button>
-        </div>
-      </Popup>
-    </Marker>
+        </InfoWindow>
+      )}
+    </>
   );
 };
 
