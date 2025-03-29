@@ -33,9 +33,9 @@ const MapView = ({ locations }: MapViewProps) => {
     }
   }, []);
 
-  // Only initialize the loader when we have a valid API key
+  // Only initialize the loader when we have a valid API key and when that key changes
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: googleApiKey || ' ', // Empty space as placeholder when no key is set
+    googleMapsApiKey: googleApiKey || '',
     id: 'google-map-script'
   });
 
@@ -51,10 +51,8 @@ const MapView = ({ locations }: MapViewProps) => {
     
     // Save key to localStorage
     localStorage.setItem('google_maps_key', keyInput);
-    
-    // Force a full page reload to reinitialize the Google Maps loader
-    // This avoids the error with changing loader options
-    window.location.reload();
+    setGoogleApiKey(keyInput);
+    toast.success('Google Maps API key saved successfully!');
   };
 
   const handleFocusUBC = () => {
@@ -109,8 +107,7 @@ const MapView = ({ locations }: MapViewProps) => {
         <button
           onClick={() => {
             localStorage.removeItem('google_maps_key');
-            // Force a page reload to clear any cached Google Maps loader state
-            window.location.reload();
+            setGoogleApiKey('');
           }}
           className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
         >
