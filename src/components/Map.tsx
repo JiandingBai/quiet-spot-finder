@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from 'react';
-import Map, { MapRef, NavigationControl, GeolocateControl } from 'react-map-gl';
+import * as mapboxgl from 'mapbox-gl';
+import Map, { NavigationControl, GeolocateControl, MapRef } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Location } from '@/types';
 import LocationMarker from './LocationMarker';
