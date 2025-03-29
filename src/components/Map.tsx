@@ -1,9 +1,9 @@
 
 import { useEffect, useRef, useState, memo } from 'react';
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Location } from '@/types';
 import LocationMarker from './LocationMarker';
 import { toast } from 'sonner';
+import MapFilterBar, { FilterOptions } from './MapFilterBar';
 
 interface MapViewProps {
   locations: Location[];
@@ -21,40 +21,18 @@ const UBC_CENTER = {
   lng: -123.2460
 };
 
-// Create a lazy-loaded Google Maps script component
-const GoogleMapsScript = memo(({ apiKey }: { apiKey: string }) => {
-  useEffect(() => {
-    // Only load the script if we have an API key
-    if (!apiKey) return;
-    
-    // Check if script is already loaded
-    const existingScript = document.getElementById('google-maps-script');
-    if (existingScript) return;
-
-    // Create and append the script
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`;
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    return () => {
-      // Clean up the script tag if component unmounts
-      const scriptTag = document.getElementById('google-maps-script');
-      if (scriptTag) document.head.removeChild(scriptTag);
-    };
-  }, [apiKey]);
-
-  return null;
-});
-
 const MapView = ({ locations }: MapViewProps) => {
   const [googleApiKey, setGoogleApiKey] = useState<string>('');
   const [keyInput, setKeyInput] = useState<string>('');
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [filteredLocations, setFilteredLocations] = useState<Location[]>(locations);
+  const [filters, setFilters] = useState<FilterOptions>({
+    maxNoise: 100,
+    type: 'all',
+    isOpenNow: false,
+  });
   const mapRef = useRef<google.maps.Map | null>(null);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
   
   // Load the API key on component mount
   useEffect(() => {
@@ -64,35 +42,93 @@ const MapView = ({ locations }: MapViewProps) => {
     }
   }, []);
 
-  // Check if the Google Maps API is loaded
+  useEffect(() => {
+    // Apply filters to locations
+    let result = [...locations];
+    
+    // Filter by noise level (assuming noise level is in percentage in the location data)
+    if (filters.maxNoise < 100) {
+      result = result.filter(loc => 
+        loc.noiseLevel ? loc.noiseLevel <= filters.maxNoise : true
+      );
+    }
+    
+    // Filter by type
+    if (filters.type !== 'all') {
+      result = result.filter(loc => 
+        loc.type === filters.type
+      );
+    }
+    
+    // Filter by open status (would need current time and opening hours data)
+    if (filters.isOpenNow) {
+      // This is a simplified example - you'd need more logic based on your data structure
+      result = result.filter(loc => 
+        loc.isOpen === true
+      );
+    }
+    
+    setFilteredLocations(result);
+  }, [filters, locations]);
+
+  // Load Google Maps script
   useEffect(() => {
     if (!googleApiKey) {
       setMapLoaded(false);
       return;
     }
 
-    const checkIfLoaded = () => {
-      if (window.google && window.google.maps) {
-        setMapLoaded(true);
-      } else {
-        setTimeout(checkIfLoaded, 100);
+    // Cleanup previous script if it exists
+    if (scriptRef.current) {
+      document.head.removeChild(scriptRef.current);
+      scriptRef.current = null;
+      // Reset any global Google Maps state
+      window.google = undefined;
+    }
+
+    // Create new script element
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleApiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      setMapLoaded(true);
+      initializeMap();
+    };
+    
+    script.onerror = () => {
+      toast.error('Failed to load Google Maps. Please check your API key.');
+      setMapLoaded(false);
+    };
+    
+    document.head.appendChild(script);
+    scriptRef.current = script;
+    
+    return () => {
+      if (scriptRef.current) {
+        document.head.removeChild(scriptRef.current);
       }
     };
+  }, [googleApiKey]);
 
-    checkIfLoaded();
-
-    // Set up a timeout to stop checking after 10 seconds
-    const timeout = setTimeout(() => {
-      if (!mapLoaded) {
-        toast.error('Google Maps failed to load. Please check your API key and try again.');
-      }
-    }, 10000);
-
-    return () => clearTimeout(timeout);
-  }, [googleApiKey, mapLoaded]);
-
-  const onMapLoad = (map: google.maps.Map) => {
-    mapRef.current = map;
+  const initializeMap = () => {
+    if (!window.google || !window.google.maps) {
+      return;
+    }
+    
+    const mapDiv = document.getElementById('map-container');
+    if (!mapDiv) return;
+    
+    mapRef.current = new window.google.maps.Map(mapDiv, {
+      center: UBC_CENTER,
+      zoom: 15,
+      mapTypeControl: true,
+      streetViewControl: true,
+      fullscreenControl: true,
+      zoomControl: true,
+    });
   };
 
   const handleKeySubmit = () => {
@@ -121,6 +157,10 @@ const MapView = ({ locations }: MapViewProps) => {
       mapRef.current.panTo(UBC_CENTER);
       mapRef.current.setZoom(15);
     }
+  };
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
   };
 
   // Render the API Key input form if no key is provided
@@ -162,7 +202,7 @@ const MapView = ({ locations }: MapViewProps) => {
   // Add the Google Maps script to the document
   return (
     <>
-      <GoogleMapsScript apiKey={googleApiKey} />
+      <MapFilterBar onFilterChange={handleFilterChange} />
       
       {!mapLoaded && (
         <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded-lg">
@@ -170,24 +210,20 @@ const MapView = ({ locations }: MapViewProps) => {
         </div>
       )}
       
-      {mapLoaded && window.google && window.google.maps && (
+      {mapLoaded && window.google && (
         <div className="map-container relative">
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={UBC_CENTER}
-            zoom={15}
-            onLoad={onMapLoad}
-            options={{
-              mapTypeControl: true,
-              streetViewControl: true,
-              fullscreenControl: true,
-              zoomControl: true,
-            }}
-          >
-            {locations.map(location => (
-              <LocationMarker key={location._id} location={location} />
-            ))}
-          </GoogleMap>
+          <div id="map-container" style={mapContainerStyle}>
+            {/* Map renders here */}
+          </div>
+          
+          {/* Render markers after map has loaded */}
+          {mapRef.current && filteredLocations.map(location => (
+            <LocationMarker 
+              key={location._id} 
+              location={location} 
+              map={mapRef.current}
+            />
+          ))}
           
           <div className="absolute bottom-4 right-4 flex gap-2">
             <button
@@ -207,7 +243,7 @@ const MapView = ({ locations }: MapViewProps) => {
         </div>
       )}
       
-      {mapLoaded && !window.google?.maps && (
+      {mapLoaded && !window.google && (
         <div className="map-container flex flex-col items-center justify-center bg-red-50 p-6 rounded-lg border border-red-200">
           <h3 className="text-lg font-semibold text-red-600 mb-4">Error Loading Google Maps</h3>
           <p className="text-sm text-red-500 mb-4 text-center">
