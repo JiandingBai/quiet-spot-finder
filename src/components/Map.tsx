@@ -56,7 +56,7 @@ const MapView = ({ locations }: MapViewProps) => {
     // Filter by type
     if (filters.type !== 'all') {
       result = result.filter(loc => 
-        loc.type === filters.type
+        loc.locationType === filters.type
       );
     }
     
@@ -219,7 +219,7 @@ const MapView = ({ locations }: MapViewProps) => {
           {/* Render markers after map has loaded */}
           {mapRef.current && filteredLocations.map(location => (
             <LocationMarker 
-              key={location._id} 
+              key={location.id} 
               location={location} 
               map={mapRef.current}
             />

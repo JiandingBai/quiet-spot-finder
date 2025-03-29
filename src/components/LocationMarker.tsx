@@ -1,7 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Location } from '@/types';
-import { QuietnessLevel } from '@/components/QuietnessMeter';
 
 interface LocationMarkerProps {
   location: Location;
@@ -14,17 +13,17 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
   const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null);
 
   // Create marker when map changes
-  useState(() => {
+  useEffect(() => {
     if (!map || !window.google) return;
 
     // Create the marker
     const newMarker = new window.google.maps.Marker({
-      position: { lat: location.latitude, lng: location.longitude },
+      position: { lat: location.lat, lng: location.lng },
       map,
       title: location.name,
       icon: {
         path: window.google.maps.SymbolPath.CIRCLE,
-        fillColor: getColorForQuietness(location.quietness || 0),
+        fillColor: getColorForQuietness(location.noiseLevel || 0),
         fillOpacity: 0.6,
         strokeWeight: 1,
         strokeColor: '#ffffff',
@@ -38,7 +37,7 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
         <h3 class="font-semibold text-sm">${location.name}</h3>
         <p class="text-xs text-gray-500">${location.description || ''}</p>
         <div class="mt-2">
-          <a href="/location/${location._id}" class="text-xs text-quiet-500 hover:underline">View Details</a>
+          <a href="/location/${location.id}" class="text-xs text-quiet-500 hover:underline">View Details</a>
         </div>
       </div>
     `;
@@ -76,27 +75,10 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
   }, [map, location]);
 
   // Helper function to determine color based on quietness level
-  function getColorForQuietness(level: QuietnessLevel | number): string {
-    if (typeof level === 'number') {
-      if (level >= 8) return '#4CAF50'; // Green for very quiet
-      if (level >= 5) return '#FFC107'; // Yellow for moderate
-      return '#F44336'; // Red for noisy
-    }
-    
-    switch (level) {
-      case 'VERY_QUIET':
-        return '#4CAF50'; // Green
-      case 'QUIET':
-        return '#8BC34A'; // Light green
-      case 'MODERATE':
-        return '#FFC107'; // Yellow
-      case 'NOISY':
-        return '#FF9800'; // Orange
-      case 'VERY_NOISY':
-        return '#F44336'; // Red
-      default:
-        return '#9E9E9E'; // Grey
-    }
+  function getColorForQuietness(level: number): string {
+    if (level >= 8) return '#4CAF50'; // Green for very quiet
+    if (level >= 5) return '#FFC107'; // Yellow for moderate
+    return '#F44336'; // Red for noisy
   }
 
   // No need to render anything in the component since we're using Google Maps markers
