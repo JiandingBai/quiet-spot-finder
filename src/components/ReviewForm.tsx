@@ -1,42 +1,9 @@
 
-import { z } from "zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage 
-} from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from "@/components/ui/select";
 import { Location } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { addReview } from "@/services/locationService";
 import { getCurrentUser, setNickname } from "@/services/userService";
-
-const formSchema = z.object({
-  location: z.string().min(1, "Please select a location"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  noiseLevel: z.coerce.number().min(1).max(5),
-  busyLevel: z.coerce.number().min(1).max(5),
-  textReview: z.string().min(10, "Review must be at least 10 characters").max(500, "Review must be less than 500 characters"),
-  weather: z.enum(["rainy", "cloudy", "sunny", "partly_cloudy", "snowy"]),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface ReviewFormProps {
   locations: Location[];
@@ -48,42 +15,59 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = getCurrentUser();
   
-  const defaultValues: Partial<FormValues> = {
+  const [formData, setFormData] = useState({
     location: preselectedLocationId || "",
     name: currentUser?.nickname || "",
     noiseLevel: 3,
     busyLevel: 3,
     textReview: "",
-    weather: "sunny",
-  };
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
+    weather: "sunny" as const,
   });
 
-  const onSubmit = async (data: FormValues) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.location) newErrors.location = "Please select a location";
+    if (!formData.name || formData.name.length < 2) newErrors.name = "Name must be at least 2 characters";
+    if (!formData.textReview || formData.textReview.length < 10) newErrors.textReview = "Review must be at least 10 characters";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsSubmitting(true);
     
     try {
       // Save the nickname if it's different
-      if (!currentUser || currentUser.nickname !== data.name) {
-        setNickname(data.name);
+      if (!currentUser || currentUser.nickname !== formData.name) {
+        setNickname(formData.name);
       }
       
       // Submit the review
       await addReview({
-        location: data.location,
-        name: data.name,
-        noiseLevel: data.noiseLevel,
-        busyLevel: data.busyLevel,
-        textReview: data.textReview,
-        weather: data.weather,
+        location: formData.location,
+        name: formData.name,
+        noiseLevel: Number(formData.noiseLevel),
+        busyLevel: Number(formData.busyLevel),
+        textReview: formData.textReview,
+        weather: formData.weather,
         datetime: new Date().toISOString(),
       });
       
       // Navigate to the location details page
-      navigate(`/location/${data.location}`);
+      navigate(`/location/${formData.location}`);
     } catch (error) {
       console.error(error);
     } finally {
@@ -92,174 +76,125 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="form-group">
+        <label htmlFor="location" className="block text-gray-700 font-medium mb-2">Select Location</label>
+        <select
+          id="location"
           name="location"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Select Location</FormLabel>
-              <Select
-                disabled={isSubmitting || !!preselectedLocationId}
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a location" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {locations.map((location) => (
-                    <SelectItem key={location._id} value={location._id}>
-                      {location.name || location.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
+          value={formData.location}
+          onChange={handleInputChange}
+          disabled={isSubmitting || !!preselectedLocationId}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-quiet-400"
+        >
+          <option value="">Select a location</option>
+          {locations.map((location) => (
+            <option key={location._id} value={location._id}>
+              {location.name || location.address}
+            </option>
+          ))}
+        </select>
+        {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+      </div>
+      
+      <div className="form-group">
+        <label htmlFor="name" className="block text-gray-700 font-medium mb-2">Your Name</label>
+        <input
+          id="name"
           name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Your Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John Doe" {...field} />
-              </FormControl>
-              <FormDescription>
-                This will be visible with your review
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+          type="text"
+          placeholder="John Doe"
+          value={formData.name}
+          onChange={handleInputChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-quiet-400"
         />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="noiseLevel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Noise Level (1-5)</FormLabel>
-                <FormControl>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      {...field}
-                      className="w-full"
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                    />
-                    <span className="text-lg font-semibold w-8 text-center">
-                      {field.value}
-                    </span>
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  1 = Very loud, 5 = Very quiet
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="busyLevel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Busy Level (1-5)</FormLabel>
-                <FormControl>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="range"
-                      min={1}
-                      max={5}
-                      step={1}
-                      {...field}
-                      className="w-full"
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                    />
-                    <span className="text-lg font-semibold w-8 text-center">
-                      {field.value}
-                    </span>
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  1 = Very busy, 5 = Not busy
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <p className="text-gray-500 text-sm mt-1">This will be visible with your review</p>
+        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="form-group">
+          <label htmlFor="noiseLevel" className="block text-gray-700 font-medium mb-2">Noise Level (1-5)</label>
+          <div className="flex items-center gap-4">
+            <input
+              id="noiseLevel"
+              name="noiseLevel"
+              type="range"
+              min={1}
+              max={5}
+              step={1}
+              value={formData.noiseLevel}
+              onChange={handleInputChange}
+              className="w-full"
+            />
+            <span className="text-lg font-semibold w-8 text-center">
+              {formData.noiseLevel}
+            </span>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">1 = Very loud, 5 = Very quiet</p>
         </div>
         
-        <FormField
-          control={form.control}
+        <div className="form-group">
+          <label htmlFor="busyLevel" className="block text-gray-700 font-medium mb-2">Busy Level (1-5)</label>
+          <div className="flex items-center gap-4">
+            <input
+              id="busyLevel"
+              name="busyLevel"
+              type="range"
+              min={1}
+              max={5}
+              step={1}
+              value={formData.busyLevel}
+              onChange={handleInputChange}
+              className="w-full"
+            />
+            <span className="text-lg font-semibold w-8 text-center">
+              {formData.busyLevel}
+            </span>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">1 = Very busy, 5 = Not busy</p>
+        </div>
+      </div>
+      
+      <div className="form-group">
+        <label htmlFor="weather" className="block text-gray-700 font-medium mb-2">Weather</label>
+        <select
+          id="weather"
           name="weather"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Weather</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select weather" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="sunny">Sunny</SelectItem>
-                  <SelectItem value="cloudy">Cloudy</SelectItem>
-                  <SelectItem value="rainy">Rainy</SelectItem>
-                  <SelectItem value="partly_cloudy">Partly Cloudy</SelectItem>
-                  <SelectItem value="snowy">Snowy</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="textReview"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Your Review</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Share your experience with this location..."
-                  className="resize-none min-h-[120px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Provide details about your experience and tips for others
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-          className="bg-quiet-400 hover:bg-quiet-500 w-full"
+          value={formData.weather}
+          onChange={handleInputChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-quiet-400"
         >
-          {isSubmitting ? "Submitting..." : "Submit Review"}
-        </Button>
-      </form>
-    </Form>
+          <option value="sunny">Sunny</option>
+          <option value="cloudy">Cloudy</option>
+          <option value="rainy">Rainy</option>
+          <option value="partly_cloudy">Partly Cloudy</option>
+          <option value="snowy">Snowy</option>
+        </select>
+      </div>
+      
+      <div className="form-group">
+        <label htmlFor="textReview" className="block text-gray-700 font-medium mb-2">Your Review</label>
+        <textarea
+          id="textReview"
+          name="textReview"
+          placeholder="Share your experience with this location..."
+          value={formData.textReview}
+          onChange={handleInputChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm resize-none min-h-[120px] focus:outline-none focus:ring-2 focus:ring-quiet-400"
+        />
+        <p className="text-gray-500 text-sm mt-1">Provide details about your experience</p>
+        {errors.textReview && <p className="text-red-500 text-sm mt-1">{errors.textReview}</p>}
+      </div>
+      
+      <button 
+        type="submit" 
+        disabled={isSubmitting}
+        className="bg-quiet-400 hover:bg-quiet-500 text-white px-4 py-2 rounded w-full font-medium"
+      >
+        {isSubmitting ? "Submitting..." : "Submit Review"}
+      </button>
+    </form>
   );
 };
 

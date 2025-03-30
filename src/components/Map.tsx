@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, memo } from 'react';
 import { Location } from '@/types';
 import LocationMarker from './LocationMarker';
@@ -49,7 +48,7 @@ const MapView = ({ locations }: MapViewProps) => {
     // Filter by noise level (using averageQuietness in the location data)
     if (filters.maxNoise < 100) {
       result = result.filter(loc => 
-        loc.averageQuietness ? loc.averageQuietness * 10 <= filters.maxNoise : true
+        loc.rating ? loc.rating * 10 <= filters.maxNoise : true
       );
     }
     

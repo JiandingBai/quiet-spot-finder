@@ -6,11 +6,11 @@ export interface Location {
   latitude: number;
   rating: number;
   numReviews: number;
-  name?: string; // Added for compatibility with UI
-  description?: string; // Added for compatibility with UI
-  category?: string; // Added for compatibility with UI
-  amenities?: string[]; // Added for compatibility with UI
-  imageUrl?: string; // Added for compatibility with UI
+  name?: string; 
+  description?: string;
+  category?: string;
+  amenities?: string[];
+  imageUrl?: string;
 }
 
 export interface Review {
@@ -19,9 +19,13 @@ export interface Review {
   textReview: string;
   noiseLevel: number;
   busyLevel: number;
-  location: string; // This will store the LocationId
+  location: string; // LocationId
   weather: "rainy" | "cloudy" | "sunny" | "partly_cloudy" | "snowy";
   datetime: string;
+}
+
+export interface User {
+  nickname: string;
 }
 
 export type QuietnessLevel = 1 | 2 | 3 | 4 | 5;
