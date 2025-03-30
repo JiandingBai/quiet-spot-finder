@@ -18,12 +18,15 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
 
     // Create the marker
     const newMarker = new window.google.maps.Marker({
-      position: { lat: location.lat, lng: location.lng },
+      position: { 
+        lat: location.location.coordinates[1], // Latitude is second in the coordinates array
+        lng: location.location.coordinates[0]  // Longitude is first in the coordinates array
+      },
       map,
       title: location.name,
       icon: {
         path: window.google.maps.SymbolPath.CIRCLE,
-        fillColor: getColorForQuietness(location.noiseLevel || 0),
+        fillColor: getColorForQuietness(location.averageQuietness || 0),
         fillOpacity: 0.6,
         strokeWeight: 1,
         strokeColor: '#ffffff',
@@ -37,7 +40,7 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
         <h3 class="font-semibold text-sm">${location.name}</h3>
         <p class="text-xs text-gray-500">${location.description || ''}</p>
         <div class="mt-2">
-          <a href="/location/${location.id}" class="text-xs text-quiet-500 hover:underline">View Details</a>
+          <a href="/location/${location._id}" class="text-xs text-quiet-500 hover:underline">View Details</a>
         </div>
       </div>
     `;

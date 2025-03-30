@@ -46,26 +46,25 @@ const MapView = ({ locations }: MapViewProps) => {
     // Apply filters to locations
     let result = [...locations];
     
-    // Filter by noise level (assuming noise level is in percentage in the location data)
+    // Filter by noise level (using averageQuietness in the location data)
     if (filters.maxNoise < 100) {
       result = result.filter(loc => 
-        loc.noiseLevel ? loc.noiseLevel <= filters.maxNoise : true
+        loc.averageQuietness ? loc.averageQuietness * 10 <= filters.maxNoise : true
       );
     }
     
     // Filter by type
     if (filters.type !== 'all') {
       result = result.filter(loc => 
-        loc.locationType === filters.type
+        loc.category === filters.type
       );
     }
     
-    // Filter by open status (would need current time and opening hours data)
+    // Filter by open status (simplified example)
     if (filters.isOpenNow) {
       // This is a simplified example - you'd need more logic based on your data structure
-      result = result.filter(loc => 
-        loc.isOpen === true
-      );
+      // For now, we'll assume all locations are open
+      result = result;
     }
     
     setFilteredLocations(result);
@@ -219,7 +218,7 @@ const MapView = ({ locations }: MapViewProps) => {
           {/* Render markers after map has loaded */}
           {mapRef.current && filteredLocations.map(location => (
             <LocationMarker 
-              key={location.id} 
+              key={location._id} 
               location={location} 
               map={mapRef.current}
             />

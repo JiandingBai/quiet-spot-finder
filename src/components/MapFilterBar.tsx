@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { LocationCategory } from '@/types';
 
 interface FilterBarProps {
   onFilterChange: (filters: FilterOptions) => void;
@@ -88,9 +89,13 @@ const MapFilterBar = ({ onFilterChange }: FilterBarProps) => {
               <SelectContent>
                 <SelectItem value="all">All Spaces</SelectItem>
                 <SelectItem value="library">Library</SelectItem>
-                <SelectItem value="study_room">Study Room</SelectItem>
-                <SelectItem value="outdoor">Outdoor</SelectItem>
+                <SelectItem value="study room">Study Room</SelectItem>
+                <SelectItem value="café">Café</SelectItem>
+                <SelectItem value="outdoor space">Outdoor Space</SelectItem>
                 <SelectItem value="lounge">Lounge</SelectItem>
+                <SelectItem value="classroom">Classroom</SelectItem>
+                <SelectItem value="garden">Garden</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
