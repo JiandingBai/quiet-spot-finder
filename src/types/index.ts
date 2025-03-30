@@ -1,35 +1,27 @@
 
 export interface Location {
   _id: string;
-  name: string;
-  description: string;
-  location: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-  };
   address: string;
-  category: string;
-  amenities: string[];
-  averageQuietness: number;
-  reviews: Review[];
-  imageUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  longitude: number;
+  latitude: number;
+  rating: number;
+  numReviews: number;
+  name?: string; // Added for compatibility with UI
+  description?: string; // Added for compatibility with UI
+  category?: string; // Added for compatibility with UI
+  amenities?: string[]; // Added for compatibility with UI
+  imageUrl?: string; // Added for compatibility with UI
 }
 
 export interface Review {
   _id: string;
-  locationId: string;
-  nickname: string;
-  quietnessRating: number;
-  comment: string;
-  visitDate: string;
-  timeOfDay: string;
-  createdAt: string;
-}
-
-export interface User {
-  nickname: string;
+  name: string;
+  textReview: string;
+  noiseLevel: number;
+  busyLevel: number;
+  location: string; // This will store the LocationId
+  weather: "rainy" | "cloudy" | "sunny" | "partly_cloudy" | "snowy";
+  datetime: string;
 }
 
 export type QuietnessLevel = 1 | 2 | 3 | 4 | 5;

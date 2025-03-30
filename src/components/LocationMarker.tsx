@@ -8,7 +8,6 @@ interface LocationMarkerProps {
 }
 
 const LocationMarker = ({ location, map }: LocationMarkerProps) => {
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [marker, setMarker] = useState<google.maps.Marker | null>(null);
   const [infoWindow, setInfoWindow] = useState<google.maps.InfoWindow | null>(null);
 
@@ -19,14 +18,14 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
     // Create the marker
     const newMarker = new window.google.maps.Marker({
       position: { 
-        lat: location.location.coordinates[1], // Latitude is second in the coordinates array
-        lng: location.location.coordinates[0]  // Longitude is first in the coordinates array
+        lat: location.latitude,
+        lng: location.longitude
       },
       map,
-      title: location.name,
+      title: location.name || location.address,
       icon: {
         path: window.google.maps.SymbolPath.CIRCLE,
-        fillColor: getColorForQuietness(location.averageQuietness || 0),
+        fillColor: getColorForQuietness(location.rating || 0),
         fillOpacity: 0.6,
         strokeWeight: 1,
         strokeColor: '#ffffff',
@@ -37,7 +36,7 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
     // Create info window content
     const contentString = `
       <div class="p-2 max-w-[200px]">
-        <h3 class="font-semibold text-sm">${location.name}</h3>
+        <h3 class="font-semibold text-sm">${location.name || location.address}</h3>
         <p class="text-xs text-gray-500">${location.description || ''}</p>
         <div class="mt-2">
           <a href="/location/${location._id}" class="text-xs text-quiet-500 hover:underline">View Details</a>
@@ -56,12 +55,6 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
         anchor: newMarker,
         map,
       });
-      setIsInfoOpen(true);
-    });
-
-    // Close info window listener
-    newInfoWindow.addListener('closeclick', () => {
-      setIsInfoOpen(false);
     });
 
     setMarker(newMarker);
@@ -79,8 +72,8 @@ const LocationMarker = ({ location, map }: LocationMarkerProps) => {
 
   // Helper function to determine color based on quietness level
   function getColorForQuietness(level: number): string {
-    if (level >= 8) return '#4CAF50'; // Green for very quiet
-    if (level >= 5) return '#FFC107'; // Yellow for moderate
+    if (level >= 4) return '#4CAF50'; // Green for very quiet
+    if (level >= 2.5) return '#FFC107'; // Yellow for moderate
     return '#F44336'; // Red for noisy
   }
 

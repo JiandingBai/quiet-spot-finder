@@ -22,23 +22,18 @@ import {
   SelectTrigger,
   SelectValue 
 } from "@/components/ui/select";
-import { Location, TimeOfDay } from "@/types";
+import { Location } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { addReview } from "@/services/locationService";
 import { getCurrentUser, setNickname } from "@/services/userService";
-import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const formSchema = z.object({
-  locationId: z.string().min(1, "Please select a location"),
-  nickname: z.string().min(2, "Nickname must be at least 2 characters"),
-  quietnessRating: z.coerce.number().min(1).max(5),
-  comment: z.string().min(10, "Comment must be at least 10 characters").max(500, "Comment must be less than 500 characters"),
-  visitDate: z.string().refine(val => !isNaN(Date.parse(val)), {
-    message: "Please enter a valid date",
-  }),
-  timeOfDay: z.enum(["morning", "afternoon", "evening", "night"]),
+  location: z.string().min(1, "Please select a location"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  noiseLevel: z.coerce.number().min(1).max(5),
+  busyLevel: z.coerce.number().min(1).max(5),
+  textReview: z.string().min(10, "Review must be at least 10 characters").max(500, "Review must be less than 500 characters"),
+  weather: z.enum(["rainy", "cloudy", "sunny", "partly_cloudy", "snowy"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,12 +49,12 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
   const currentUser = getCurrentUser();
   
   const defaultValues: Partial<FormValues> = {
-    locationId: preselectedLocationId || "",
-    nickname: currentUser?.nickname || "",
-    quietnessRating: 3,
-    comment: "",
-    visitDate: new Date().toISOString().split('T')[0],
-    timeOfDay: "afternoon",
+    location: preselectedLocationId || "",
+    name: currentUser?.nickname || "",
+    noiseLevel: 3,
+    busyLevel: 3,
+    textReview: "",
+    weather: "sunny",
   };
 
   const form = useForm<FormValues>({
@@ -72,26 +67,24 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
     
     try {
       // Save the nickname if it's different
-      if (!currentUser || currentUser.nickname !== data.nickname) {
-        setNickname(data.nickname);
+      if (!currentUser || currentUser.nickname !== data.name) {
+        setNickname(data.name);
       }
       
       // Submit the review
-      const review = await addReview({
-        locationId: data.locationId,
-        nickname: data.nickname,
-        quietnessRating: data.quietnessRating,
-        comment: data.comment,
-        visitDate: data.visitDate,
-        timeOfDay: data.timeOfDay as TimeOfDay,
+      await addReview({
+        location: data.location,
+        name: data.name,
+        noiseLevel: data.noiseLevel,
+        busyLevel: data.busyLevel,
+        textReview: data.textReview,
+        weather: data.weather,
+        datetime: new Date().toISOString(),
       });
       
-      toast.success("Review submitted successfully!");
-      
       // Navigate to the location details page
-      navigate(`/location/${data.locationId}`);
+      navigate(`/location/${data.location}`);
     } catch (error) {
-      toast.error("Failed to submit review");
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -101,19 +94,9 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {!currentUser && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Nickname Required</AlertTitle>
-            <AlertDescription>
-              You need to provide a nickname before submitting a review. This will be visible to others.
-            </AlertDescription>
-          </Alert>
-        )}
-        
         <FormField
           control={form.control}
-          name="locationId"
+          name="location"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Select Location</FormLabel>
@@ -124,13 +107,13 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a quiet space" />
+                    <SelectValue placeholder="Select a location" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {locations.map((location) => (
                     <SelectItem key={location._id} value={location._id}>
-                      {location.name}
+                      {location.name || location.address}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -142,12 +125,12 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
         
         <FormField
           control={form.control}
-          name="nickname"
+          name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Your Nickname</FormLabel>
+              <FormLabel>Your Name</FormLabel>
               <FormControl>
-                <Input placeholder="StudyMaster" {...field} />
+                <Input placeholder="John Doe" {...field} />
               </FormControl>
               <FormDescription>
                 This will be visible with your review
@@ -157,46 +140,32 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="quietnessRating"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quietness Rating (1-5)</FormLabel>
-              <FormControl>
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="range"
-                    min={1}
-                    max={5}
-                    step={1}
-                    {...field}
-                    className="w-full"
-                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                  />
-                  <span className="text-lg font-semibold w-8 text-center">
-                    {field.value}
-                  </span>
-                </div>
-              </FormControl>
-              <FormDescription>
-                1 = Very noisy, 5 = Very quiet
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
-            name="visitDate"
+            name="noiseLevel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Visit Date</FormLabel>
+                <FormLabel>Noise Level (1-5)</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="range"
+                      min={1}
+                      max={5}
+                      step={1}
+                      {...field}
+                      className="w-full"
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    />
+                    <span className="text-lg font-semibold w-8 text-center">
+                      {field.value}
+                    </span>
+                  </div>
                 </FormControl>
+                <FormDescription>
+                  1 = Very loud, 5 = Very quiet
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -204,26 +173,29 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
           
           <FormField
             control={form.control}
-            name="timeOfDay"
+            name="busyLevel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Time of Day</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select time of day" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="morning">Morning</SelectItem>
-                    <SelectItem value="afternoon">Afternoon</SelectItem>
-                    <SelectItem value="evening">Evening</SelectItem>
-                    <SelectItem value="night">Night</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Busy Level (1-5)</FormLabel>
+                <FormControl>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="range"
+                      min={1}
+                      max={5}
+                      step={1}
+                      {...field}
+                      className="w-full"
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    />
+                    <span className="text-lg font-semibold w-8 text-center">
+                      {field.value}
+                    </span>
+                  </div>
+                </FormControl>
+                <FormDescription>
+                  1 = Very busy, 5 = Not busy
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -232,13 +204,41 @@ const ReviewForm = ({ locations, preselectedLocationId }: ReviewFormProps) => {
         
         <FormField
           control={form.control}
-          name="comment"
+          name="weather"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Weather</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select weather" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="sunny">Sunny</SelectItem>
+                  <SelectItem value="cloudy">Cloudy</SelectItem>
+                  <SelectItem value="rainy">Rainy</SelectItem>
+                  <SelectItem value="partly_cloudy">Partly Cloudy</SelectItem>
+                  <SelectItem value="snowy">Snowy</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="textReview"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Your Review</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Share your experience with this quiet space..."
+                  placeholder="Share your experience with this location..."
                   className="resize-none min-h-[120px]"
                   {...field}
                 />

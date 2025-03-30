@@ -1,6 +1,5 @@
 
 import { cn } from "@/lib/utils";
-import { QuietnessLevel } from "@/types";
 
 interface QuietnessMeterProps {
   level: number;
@@ -16,63 +15,37 @@ const QuietnessMeter = ({
   className 
 }: QuietnessMeterProps) => {
   // Ensure level is between 1-5
-  const quietnessLevel = Math.max(1, Math.min(5, Math.round(level))) as QuietnessLevel;
+  const quietnessLevel = Math.max(1, Math.min(5, Math.round(level)));
   
   const sizeClasses = {
-    sm: "h-1 gap-1",
-    md: "h-2 gap-1.5",
-    lg: "h-3 gap-2",
+    sm: "h-1",
+    md: "h-2",
+    lg: "h-3",
   };
   
   const getLabel = () => {
-    switch(quietnessLevel) {
-      case 1: return "Very Noisy";
-      case 2: return "Noisy";
-      case 3: return "Moderate";
-      case 4: return "Quiet";
-      case 5: return "Very Quiet";
-    }
+    if (level >= 4) return "Very Quiet";
+    if (level >= 3) return "Quiet";
+    if (level >= 2) return "Moderate";
+    return "Noisy";
   };
   
-  const getBars = () => {
-    const bars = [];
-    for (let i = 1; i <= 5; i++) {
-      bars.push(
-        <div 
-          key={i}
-          className={cn(
-            "rounded-full flex-1 transition-colors",
-            i <= quietnessLevel 
-              ? getBarColor(i) 
-              : "bg-gray-200"
-          )}
-        />
-      );
-    }
-    return bars;
-  };
-  
-  const getBarColor = (barLevel: number) => {
-    switch(barLevel) {
-      case 1: return "bg-red-400";
-      case 2: return "bg-orange-400";
-      case 3: return "bg-yellow-400";
-      case 4: return "bg-green-400";
-      case 5: return "bg-quiet-400";
-    }
+  const getBarColor = () => {
+    if (level >= 4) return "bg-green-500";
+    if (level >= 2.5) return "bg-yellow-500";
+    return "bg-red-500";
   };
   
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className={cn("flex w-full", sizeClasses[size])}>
-        {getBars()}
+      <div className="flex w-full items-center gap-2">
+        <div className={cn("rounded-full flex-1", sizeClasses[size], getBarColor())}></div>
+        {showLabel && (
+          <span className="text-xs text-gray-600 whitespace-nowrap">
+            {getLabel()} ({level.toFixed(1)})
+          </span>
+        )}
       </div>
-      
-      {showLabel && (
-        <span className="text-xs text-gray-600 mt-1">
-          {getLabel()}
-        </span>
-      )}
     </div>
   );
 };
